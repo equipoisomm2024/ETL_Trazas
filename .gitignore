@@ -1,0 +1,35 @@
+# Entorno
+.env
+*.env
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Base de datos
+*.db
+*.sqlite3
+
+# Testing
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# Logs
+logs/*.log
+*.log
+
+# Editores
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Docker
+.docker/
+
+# Documentación interna
+*.docx
