@@ -71,12 +71,13 @@ class IncrementalService:
                 desde,
             )
 
-            batch, insertados, lineas = [], 0, 0
+            batch, insertados, lineas, ultima_linea = [], 0, 0, desde
 
             for record in parser.parsear_fichero(ruta, desde_linea=desde):
                 record.datos["id_ejecucion"] = id_ejec
                 batch.append(record)
                 lineas += 1
+                ultima_linea = max(ultima_linea, record.num_linea)
                 if len(batch) >= BATCH_SIZE:
                     insertados += self.log_service.insertar_batch(batch)
                     self.db.commit()
@@ -86,8 +87,13 @@ class IncrementalService:
                 insertados += self.log_service.insertar_batch(batch)
                 self.db.commit()
 
+            # Contar líneas totales del fichero desde 'desde' para avanzar
+            # correctamente aunque no todas las líneas generen registro
+            with open(ruta, "r", encoding="utf-8", errors="replace") as f:
+                total_lineas_fichero = sum(1 for _ in f)
+
             ctrl.estado = "COMPLETADO"
-            ctrl.ultima_linea = desde + lineas
+            ctrl.ultima_linea = total_lineas_fichero
             ctrl.lineas_procesadas = lineas
             ctrl.registros_insertados = insertados
             logger.info(
