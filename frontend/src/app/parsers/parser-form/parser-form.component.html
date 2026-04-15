@@ -1,0 +1,193 @@
+<div class="page-header">
+  <h1>{{ esEdicion() ? 'Editar parser' : 'Nuevo parser' }}</h1>
+  <a routerLink="/parsers" class="btn btn-outline">← Volver</a>
+</div>
+
+@if (error()) {
+  <div class="alert alert-error">{{ error() }}</div>
+}
+
+<form [formGroup]="form" (ngSubmit)="guardar()" class="card">
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button type="button" class="tab" [class.active]="tabActiva() === 'datos'"
+            (click)="tabActiva.set('datos')">Datos generales</button>
+    <button type="button" class="tab" [class.active]="tabActiva() === 'patrones'"
+            (click)="tabActiva.set('patrones')">
+      Patrones <span class="badge-count">{{ patrones.length }}</span>
+    </button>
+    <button type="button" class="tab" [class.active]="tabActiva() === 'campos'"
+            (click)="tabActiva.set('campos')">
+      Campos <span class="badge-count">{{ campos.length }}</span>
+    </button>
+    <button type="button" class="tab" [class.active]="tabActiva() === 'fuentes'"
+            (click)="tabActiva.set('fuentes')">
+      Fuentes <span class="badge-count">{{ fuentes.length }}</span>
+    </button>
+  </div>
+
+  <!-- Tab: Datos generales -->
+  @if (tabActiva() === 'datos') {
+    <div class="tab-content">
+      <div class="form-row">
+        <label class="form-label">Nombre *</label>
+        <input formControlName="nombre" class="form-input" placeholder="ej: nginx_accesos">
+        @if (form.get('nombre')?.invalid && form.get('nombre')?.touched) {
+          <span class="form-error">El nombre es obligatorio.</span>
+        }
+      </div>
+
+      <div class="form-row">
+        <label class="form-label">Descripción</label>
+        <input formControlName="descripcion" class="form-input" placeholder="Descripción opcional">
+      </div>
+
+      <div class="form-row">
+        <label class="form-label">Tabla destino *</label>
+        <input formControlName="tabla_destino" class="form-input"
+               placeholder="ej: t_errores, t_metricas, t_eventos">
+        @if (form.get('tabla_destino')?.invalid && form.get('tabla_destino')?.touched) {
+          <span class="form-error">La tabla destino es obligatoria.</span>
+        }
+      </div>
+
+      <div class="form-row form-row-inline">
+        <label class="form-label">Activo</label>
+        <input type="checkbox" formControlName="activo" class="form-checkbox">
+      </div>
+    </div>
+  }
+
+  <!-- Tab: Patrones -->
+  @if (tabActiva() === 'patrones') {
+    <div class="tab-content">
+      <p class="tab-hint">Define las expresiones regex con grupos nombrados <code>(?P&lt;nombre&gt;...)</code>.
+        Se prueban en orden ascendente.</p>
+
+      @for (patron of patrones.controls; track $index; let i = $index) {
+        <div class="nested-item" [formGroup]="$any(patron)">
+          <div class="nested-header">
+            <span>Patrón #{{ i + 1 }}</span>
+            <button type="button" class="btn btn-sm btn-danger" (click)="quitarPatron(i)">Quitar</button>
+          </div>
+          <div class="form-row">
+            <label class="form-label">Expresión regular *</label>
+            <textarea formControlName="expresion_regular" class="form-textarea"
+                      rows="2" placeholder="^(?P&lt;dt&gt;\d{4}-\d{2}-\d{2}...) ..."></textarea>
+          </div>
+          <div class="form-row-group">
+            <div class="form-row">
+              <label class="form-label">Orden</label>
+              <input type="number" formControlName="orden" class="form-input form-input-sm">
+            </div>
+            <div class="form-row form-row-inline">
+              <label class="form-label">Activo</label>
+              <input type="checkbox" formControlName="activo" class="form-checkbox">
+            </div>
+          </div>
+        </div>
+      }
+
+      <button type="button" class="btn btn-outline" (click)="agregarPatron()">+ Añadir patrón</button>
+    </div>
+  }
+
+  <!-- Tab: Campos -->
+  @if (tabActiva() === 'campos') {
+    <div class="tab-content">
+      <p class="tab-hint">Mapea cada grupo del regex a una columna de la tabla destino y define su tipo de dato.</p>
+
+      @for (campo of campos.controls; track $index; let i = $index) {
+        <div class="nested-item" [formGroup]="$any(campo)">
+          <div class="nested-header">
+            <span>Campo #{{ i + 1 }}</span>
+            <button type="button" class="btn btn-sm btn-danger" (click)="quitarCampo(i)">Quitar</button>
+          </div>
+          <div class="form-row-group">
+            <div class="form-row">
+              <label class="form-label">Grupo regex *</label>
+              <input formControlName="nombre_grupo" class="form-input" placeholder="ej: dt">
+            </div>
+            <div class="form-row">
+              <label class="form-label">Columna BD *</label>
+              <input formControlName="campo_bd" class="form-input" placeholder="ej: fecha_hora">
+            </div>
+          </div>
+          <div class="form-row-group">
+            <div class="form-row">
+              <label class="form-label">Tipo de dato *</label>
+              <select formControlName="tipo_dato" class="form-select">
+                @for (tipo of tiposDato; track tipo) {
+                  <option [value]="tipo">{{ tipo }}</option>
+                }
+              </select>
+            </div>
+            <div class="form-row">
+              <label class="form-label">Longitud <small>(solo varchar)</small></label>
+              <input type="number" formControlName="longitud" class="form-input form-input-sm"
+                     placeholder="ej: 255">
+            </div>
+            <div class="form-row">
+              <label class="form-label">Orden</label>
+              <input type="number" formControlName="orden" class="form-input form-input-sm">
+            </div>
+          </div>
+          <div class="form-row-group">
+            <div class="form-row form-row-inline">
+              <label class="form-label">Opcional</label>
+              <input type="checkbox" formControlName="opcional" class="form-checkbox">
+            </div>
+            <div class="form-row">
+              <label class="form-label">Valor por defecto</label>
+              <input formControlName="valor_defecto" class="form-input" placeholder="(vacío = null)">
+            </div>
+          </div>
+        </div>
+      }
+
+      <button type="button" class="btn btn-outline" (click)="agregarCampo()">+ Añadir campo</button>
+    </div>
+  }
+
+  <!-- Tab: Fuentes -->
+  @if (tabActiva() === 'fuentes') {
+    <div class="tab-content">
+      <p class="tab-hint">Rutas absolutas o patrones glob de ficheros a procesar con este parser.</p>
+
+      @for (fuente of fuentes.controls; track $index; let i = $index) {
+        <div class="nested-item" [formGroup]="$any(fuente)">
+          <div class="nested-header">
+            <span>Fuente #{{ i + 1 }}</span>
+            <button type="button" class="btn btn-sm btn-danger" (click)="quitarFuente(i)">Quitar</button>
+          </div>
+          <div class="form-row">
+            <label class="form-label">Ruta / patrón glob *</label>
+            <input formControlName="ruta_patron" class="form-input"
+                   placeholder="ej: /var/logs/nginx/access*.log">
+          </div>
+          <div class="form-row-group">
+            <div class="form-row">
+              <label class="form-label">Descripción</label>
+              <input formControlName="descripcion" class="form-input" placeholder="Opcional">
+            </div>
+            <div class="form-row form-row-inline">
+              <label class="form-label">Activo</label>
+              <input type="checkbox" formControlName="activo" class="form-checkbox">
+            </div>
+          </div>
+        </div>
+      }
+
+      <button type="button" class="btn btn-outline" (click)="agregarFuente()">+ Añadir fuente</button>
+    </div>
+  }
+
+  <!-- Footer -->
+  <div class="form-footer">
+    <a routerLink="/parsers" class="btn btn-outline">Cancelar</a>
+    <button type="submit" class="btn btn-primary" [disabled]="guardando()">
+      {{ guardando() ? 'Guardando...' : (esEdicion() ? 'Guardar cambios' : 'Crear parser') }}
+    </button>
+  </div>
+</form>

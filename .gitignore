@@ -22,6 +22,11 @@ coverage.xml
 logs/*.log
 *.log
 
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+
 # Editores
 .vscode/
 .idea/

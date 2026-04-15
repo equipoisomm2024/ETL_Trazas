@@ -1,0 +1,59 @@
+<div class="page-header">
+  <h1>Parsers configurados</h1>
+  <a routerLink="/parsers/nuevo" class="btn btn-primary">+ Nuevo parser</a>
+</div>
+
+@if (error()) {
+  <div class="alert alert-error">{{ error() }}</div>
+}
+
+@if (cargando()) {
+  <div class="loading">Cargando...</div>
+} @else if (parsers().length === 0) {
+  <div class="empty-state">
+    <p>No hay parsers configurados.</p>
+    <a routerLink="/parsers/nuevo" class="btn btn-primary">Crear el primero</a>
+  </div>
+} @else {
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Nombre</th>
+        <th>Tabla destino</th>
+        <th>Patrones</th>
+        <th>Campos</th>
+        <th>Fuentes</th>
+        <th>Estado</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (p of parsers(); track p.id) {
+        <tr [class.inactivo]="!p.activo">
+          <td>
+            <a [routerLink]="['/parsers', p.id, 'editar']" class="link">{{ p.nombre }}</a>
+            @if (p.descripcion) {
+              <small class="text-muted">{{ p.descripcion }}</small>
+            }
+          </td>
+          <td><code>{{ p.tabla_destino }}</code></td>
+          <td class="text-center">{{ p.num_patrones }}</td>
+          <td class="text-center">{{ p.num_campos }}</td>
+          <td class="text-center">{{ p.num_fuentes }}</td>
+          <td>
+            <span class="badge" [class.badge-ok]="p.activo" [class.badge-off]="!p.activo">
+              {{ p.activo ? 'Activo' : 'Inactivo' }}
+            </span>
+          </td>
+          <td class="actions">
+            <a [routerLink]="['/parsers', p.id, 'editar']" class="btn btn-sm">Editar</a>
+            <button (click)="toggleActivo(p)" class="btn btn-sm btn-outline">
+              {{ p.activo ? 'Desactivar' : 'Activar' }}
+            </button>
+            <button (click)="eliminar(p)" class="btn btn-sm btn-danger">Eliminar</button>
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+}

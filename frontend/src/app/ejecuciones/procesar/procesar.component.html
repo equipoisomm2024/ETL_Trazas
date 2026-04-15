@@ -1,0 +1,123 @@
+<div class="page-header">
+  <h1>Lanzar procesamiento</h1>
+  <a routerLink="/ejecuciones" class="btn btn-outline">← Volver</a>
+</div>
+
+<div class="card">
+  <!-- Selector de fuente -->
+  <div class="source-selector">
+    <button type="button"
+            class="source-option"
+            [class.active]="fuenteTipo() === 'directorio'"
+            (click)="seleccionarFuente('directorio')">
+      <span class="source-icon">📁</span>
+      <span>Directorio</span>
+    </button>
+    <button type="button"
+            class="source-option"
+            [class.active]="fuenteTipo() === 'fichero'"
+            (click)="seleccionarFuente('fichero')">
+      <span class="source-icon">📄</span>
+      <span>Fichero</span>
+    </button>
+    <button type="button"
+            class="source-option"
+            [class.active]="fuenteTipo() === 'fuentes_bd'"
+            (click)="seleccionarFuente('fuentes_bd')">
+      <span class="source-icon">🗄️</span>
+      <span>Fuentes configuradas en BD</span>
+    </button>
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="lanzar()">
+    @if (fuenteTipo() !== 'fuentes_bd') {
+      <div class="form-row">
+        <label class="form-label">
+          {{ fuenteTipo() === 'fichero' ? 'Ruta del fichero' : 'Ruta del directorio' }} *
+        </label>
+        <input formControlName="ruta" class="form-input"
+               [placeholder]="fuenteTipo() === 'fichero' ? '/var/logs/app.log' : '/var/logs/app'">
+        @if (form.get('ruta')?.invalid && form.get('ruta')?.touched) {
+          <span class="form-error">La ruta es obligatoria.</span>
+        }
+      </div>
+    } @else {
+      <div class="info-box">
+        Se procesarán todos los ficheros definidos en <strong>t_fuente_fichero</strong>
+        con su parser asociado.
+      </div>
+    }
+
+    <div class="form-row form-row-inline">
+      <label class="form-label">Forzar reprocesamiento completo</label>
+      <input type="checkbox" formControlName="forzar_completo" class="form-checkbox">
+      <small class="text-muted">Ignora el control incremental y reprocesa desde el principio.</small>
+    </div>
+
+    @if (error()) {
+      <div class="alert alert-error">{{ error() }}</div>
+    }
+
+    <div class="form-footer">
+      <button type="submit" class="btn btn-primary btn-lg" [disabled]="procesando()">
+        {{ procesando() ? 'Procesando...' : '▶ Lanzar' }}
+      </button>
+    </div>
+  </form>
+</div>
+
+<!-- Resultado -->
+@if (resultado()) {
+  <div class="card result-card">
+    <h2>Resultado</h2>
+    <div class="result-summary">
+      <div class="result-stat">
+        <span class="result-num">{{ resultado()!.total_ficheros }}</span>
+        <span class="result-label">Ficheros</span>
+      </div>
+      <div class="result-stat">
+        <span class="result-num text-ok">{{ resultado()!.total_insertados }}</span>
+        <span class="result-label">Registros insertados</span>
+      </div>
+      <div class="result-stat">
+        <span class="result-num" [class.text-error]="resultado()!.total_errores > 0">
+          {{ resultado()!.total_errores }}
+        </span>
+        <span class="result-label">Errores</span>
+      </div>
+    </div>
+
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Fichero</th>
+          <th>Parser</th>
+          <th>Estado</th>
+          <th>Insertados</th>
+          <th>Líneas</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (r of resultado()!.resultados; track r.fichero) {
+          <tr>
+            <td [title]="r.fichero">{{ r.fichero }}</td>
+            <td>{{ r.parser ?? '—' }}</td>
+            <td>
+              @if (r.ok) {
+                <span class="badge badge-ok">OK</span>
+              } @else {
+                <span class="badge badge-error" [title]="r.error ?? ''">ERROR</span>
+              }
+            </td>
+            <td class="text-right">{{ r.ok ? r.insertados : '—' }}</td>
+            <td class="text-right">{{ r.ok ? r.lineas_procesadas : '—' }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+
+    <div class="form-footer">
+      <a routerLink="/ejecuciones" class="btn btn-outline">Ver todas las ejecuciones</a>
+    </div>
+  </div>
+}

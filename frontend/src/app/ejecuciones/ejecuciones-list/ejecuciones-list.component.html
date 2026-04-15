@@ -1,0 +1,106 @@
+<div class="page-header">
+  <h1>Ejecuciones</h1>
+  <a routerLink="/ejecuciones/procesar" class="btn btn-primary">▶ Lanzar procesamiento</a>
+</div>
+
+<!-- Filtros -->
+<div class="filters card">
+  <div class="form-row-group">
+    <div class="form-row">
+      <label class="form-label">Estado</label>
+      <select [(ngModel)]="filtroEstado" class="form-select">
+        <option value="">Todos</option>
+        <option value="COMPLETADO">Completado</option>
+        <option value="EN_PROCESO">En proceso</option>
+        <option value="ERROR">Error</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label class="form-label">Fichero (contiene)</label>
+      <input [(ngModel)]="filtroFichero" class="form-input" placeholder="/var/logs/...">
+    </div>
+    <div class="form-row form-row-action">
+      <button (click)="aplicarFiltros()" class="btn btn-primary">Filtrar</button>
+    </div>
+  </div>
+</div>
+
+@if (error()) {
+  <div class="alert alert-error">{{ error() }}</div>
+}
+
+@if (cargando()) {
+  <div class="loading">Cargando...</div>
+} @else {
+  <div class="table-meta">
+    {{ lista().total }} ejecuciones — página {{ paginaActual }} / {{ totalPaginas }}
+  </div>
+
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Fichero</th>
+        <th>Estado</th>
+        <th>Líneas</th>
+        <th>Insertados</th>
+        <th>Inicio</th>
+        <th>Fin</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (e of lista().items; track e.id) {
+        <tr>
+          <td class="td-fichero" [title]="e.ruta_fichero">{{ e.ruta_fichero }}</td>
+          <td>
+            <span class="badge" [ngClass]="estadoClase(e.estado)">{{ e.estado }}</span>
+          </td>
+          <td class="text-right">{{ e.lineas_procesadas }}</td>
+          <td class="text-right">{{ e.registros_insertados }}</td>
+          <td>{{ formatFecha(e.fecha_inicio) }}</td>
+          <td>{{ formatFecha(e.fecha_fin) }}</td>
+          <td>
+            <button (click)="verDetalle(e)" class="btn btn-sm">Ver</button>
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+
+  <!-- Paginación -->
+  @if (totalPaginas > 1) {
+    <div class="pagination">
+      <button (click)="anterior()" [disabled]="lista().offset === 0" class="btn btn-outline btn-sm">← Anterior</button>
+      <span>{{ paginaActual }} / {{ totalPaginas }}</span>
+      <button (click)="siguiente()" [disabled]="lista().offset + limit >= lista().total" class="btn btn-outline btn-sm">Siguiente →</button>
+    </div>
+  }
+}
+
+<!-- Modal detalle -->
+@if (detalle()) {
+  <div class="modal-backdrop" (click)="cerrarDetalle()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Detalle de ejecución</h2>
+        <button (click)="cerrarDetalle()" class="btn-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <dl class="detail-grid">
+          <dt>ID ejecución</dt><dd><code>{{ detalle()!.id_ejecucion }}</code></dd>
+          <dt>Fichero</dt><dd>{{ detalle()!.ruta_fichero }}</dd>
+          <dt>Estado</dt>
+          <dd><span class="badge" [ngClass]="estadoClase(detalle()!.estado)">{{ detalle()!.estado }}</span></dd>
+          <dt>Líneas procesadas</dt><dd>{{ detalle()!.lineas_procesadas }}</dd>
+          <dt>Registros insertados</dt><dd>{{ detalle()!.registros_insertados }}</dd>
+          <dt>Última línea</dt><dd>{{ detalle()!.ultima_linea }}</dd>
+          <dt>Inicio</dt><dd>{{ detalle()!.fecha_inicio }}</dd>
+          <dt>Fin</dt><dd>{{ detalle()!.fecha_fin ?? '—' }}</dd>
+          @if (detalle()!.mensaje_error) {
+            <dt>Error</dt><dd class="text-error">{{ detalle()!.mensaje_error }}</dd>
+          }
+        </dl>
+      </div>
+    </div>
+  </div>
+}
