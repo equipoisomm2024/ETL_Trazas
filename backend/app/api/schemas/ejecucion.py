@@ -43,6 +43,7 @@ class ProcesarRequest(BaseModel):
     directorio: str | None = None
     usar_fuentes_bd: bool = False
     forzar_completo: bool = False
+    id_parser: int | None = None  # Parser explícito; si None se auto-detecta
 
     @model_validator(mode="after")
     def exactamente_una_fuente(self) -> "ProcesarRequest":

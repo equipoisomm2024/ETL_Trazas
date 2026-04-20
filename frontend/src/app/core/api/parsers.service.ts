@@ -17,7 +17,7 @@ export class ParsersService {
 
   listar(soloActivos = false): Observable<ConfiguracionParserResumen[]> {
     const params = soloActivos ? new HttpParams().set('solo_activos', 'true') : undefined;
-    return this.http.get<ConfiguracionParserResumen[]>(this.base, { params });
+    return this.http.get<ConfiguracionParserResumen[]>(`${this.base}/`, { params });
   }
 
   obtener(id: number): Observable<ConfiguracionParser> {
@@ -25,7 +25,7 @@ export class ParsersService {
   }
 
   crear(payload: ConfiguracionParserCrear): Observable<ConfiguracionParser> {
-    return this.http.post<ConfiguracionParser>(this.base, payload);
+    return this.http.post<ConfiguracionParser>(`${this.base}/`, payload);
   }
 
   reemplazar(id: number, payload: ConfiguracionParserCrear): Observable<ConfiguracionParser> {

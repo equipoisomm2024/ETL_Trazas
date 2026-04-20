@@ -6,6 +6,7 @@ from datetime import date, datetime
 from typing import Optional
 
 from .base_parser import BaseParser, ParsedRecord
+from .qlik_filter import QlikWhereEvaluator
 
 logger = logging.getLogger(__name__)
 
@@ -53,11 +54,14 @@ class ConfigurableParser(BaseParser):
         self._config = config
         self._nombre = config.nombre
         self._tabla_destino = config.tabla_destino
+        self._separador = getattr(config, "separador_campos", None) or " "
         self._patrones_compilados = self._compilar_patrones(config.patrones)
         self._campos = sorted(
             [c for c in config.campos],
             key=lambda c: c.orden,
         )
+        filtro_expr = getattr(config, "filtro_where", None) or ""
+        self._filtro = QlikWhereEvaluator(filtro_expr, self._separador)
 
     # ------------------------------------------------------------------
     # Interfaz BaseParser
@@ -74,7 +78,9 @@ class ConfigurableParser(BaseParser):
     def parsear_linea(
         self, linea: str, num_linea: int, origen: str
     ) -> Optional[ParsedRecord]:
-        """Aplica los patrones en orden y mapea los grupos capturados a campos de BD."""
+        """Aplica el filtro WHERE, luego los patrones en orden, y mapea campos a BD."""
+        if not self._filtro.matches(linea):
+            return None
         for patron in self._patrones_compilados:
             m = patron.match(linea)
             if not m:
@@ -122,7 +128,16 @@ class ConfigurableParser(BaseParser):
         }
 
         for campo in self._campos:
-            valor_raw = grupos.get(campo.nombre_grupo)
+            # Unión no contigua: concatenar varios grupos de captura
+            nombres_union = getattr(campo, "nombres_grupos_union", None)
+            if nombres_union:
+                fragmentos = [
+                    grupos.get(g, "") or ""
+                    for g in nombres_union.split(",")
+                ]
+                valor_raw = " ".join(f for f in fragmentos if f.strip()) or None
+            else:
+                valor_raw = grupos.get(campo.nombre_grupo)
 
             if valor_raw is None or valor_raw.strip() == "":
                 if campo.opcional:

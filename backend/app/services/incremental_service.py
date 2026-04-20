@@ -124,6 +124,7 @@ class IncrementalService:
         directorio: str,
         extensiones: tuple[str, ...] = (".log", ".txt", ".out"),
         forzar_completo: bool = False,
+        parser=None,
     ) -> list[dict]:
         """Procesa todos los ficheros de log de un directorio.
 
@@ -147,7 +148,7 @@ class IncrementalService:
         for fichero in ficheros:
             try:
                 resultado = self.procesar_fichero(
-                    str(fichero), forzar_completo=forzar_completo
+                    str(fichero), forzar_completo=forzar_completo, parser=parser
                 )
                 resultados.append({"fichero": str(fichero), "ok": True, **resultado})
             except Exception as exc:

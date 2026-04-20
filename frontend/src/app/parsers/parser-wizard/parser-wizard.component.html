@@ -1,0 +1,597 @@
+<div class="page-header">
+  <h1>Nuevo parser</h1>
+  <a routerLink="/parsers" class="btn btn-outline">← Volver</a>
+</div>
+
+<!-- Indicador de pasos -->
+<div class="wizard-steps">
+  <div class="wizard-step" [class.active]="paso() === 1" [class.done]="paso() > 1">
+    <div class="wizard-step-num">{{ paso() > 1 ? '✓' : '1' }}</div>
+    <div class="wizard-step-label">Datos básicos</div>
+  </div>
+  <div class="wizard-step-line" [class.done]="paso() > 1"></div>
+  <div class="wizard-step" [class.active]="paso() === 2" [class.done]="paso() > 2">
+    <div class="wizard-step-num">{{ paso() > 2 ? '✓' : '2' }}</div>
+    <div class="wizard-step-label">Explorar y configurar</div>
+  </div>
+  <div class="wizard-step-line" [class.done]="paso() > 2"></div>
+  <div class="wizard-step" [class.active]="paso() === 3">
+    <div class="wizard-step-num">3</div>
+    <div class="wizard-step-label">Revisar y guardar</div>
+  </div>
+</div>
+
+<!-- ================================================================
+     PASO 1: Datos básicos
+     ================================================================ -->
+@if (paso() === 1) {
+  <div class="card">
+    <form [formGroup]="form">
+      <div class="form-row">
+        <label class="form-label">Nombre *</label>
+        <input formControlName="nombre" class="form-input" placeholder="ej: ordenes_servidor">
+        @if (form.get('nombre')?.invalid && form.get('nombre')?.touched) {
+          <span class="form-error">El nombre es obligatorio (máx. 100 caracteres).</span>
+        }
+      </div>
+      <div class="form-row">
+        <label class="form-label">Descripción <span class="text-muted">(opcional)</span></label>
+        <input formControlName="descripcion" class="form-input" placeholder="Descripción del parser">
+      </div>
+    </form>
+    <div class="form-footer">
+      <a routerLink="/parsers" class="btn btn-outline">Cancelar</a>
+      <button class="btn btn-primary" (click)="irPaso(2)">Siguiente →</button>
+    </div>
+  </div>
+}
+
+<!-- ================================================================
+     PASO 2: Explorar fuente y configurar patrón
+     ================================================================ -->
+@if (paso() === 2) {
+  <div class="card">
+
+    <!-- 1. Selección de fichero fuente -->
+    <h3 class="wizard-section-title">1. Selecciona el fichero fuente</h3>
+    <div class="file-path-row">
+      <div class="file-path-display">
+        @if (rutaFichero()) {
+          <span class="file-path-icon">📄</span>
+          <span class="file-path-text" title="{{ rutaFichero() }}">{{ rutaFichero() }}</span>
+        } @else {
+          <span class="file-path-placeholder">Ningún fichero seleccionado</span>
+        }
+      </div>
+      <button class="btn btn-outline" type="button" (click)="abrirExplorador()">
+        🗂 Explorar...
+      </button>
+    </div>
+
+    @if (ficheroCargando()) {
+      <div class="loading" style="margin-top: 20px;">Leyendo fichero...</div>
+    }
+
+    @if (ficheroError()) {
+      <div class="alert alert-error" style="margin-top: 16px;">{{ ficheroError() }}</div>
+    }
+
+    @if (ficheroLineas().length > 0) {
+
+      <!-- 2. Separador -->
+      <h3 class="wizard-section-title" style="margin-top: 20px;">2. Indica el separador de campos</h3>
+      <div class="separador-opciones">
+        @for (op of opcionesSeparador; track op.value) {
+          <label class="separador-opcion" [class.selected]="modoSeparador() === op.value">
+            <input type="radio" name="modoSeparador"
+                   [value]="op.value"
+                   [checked]="modoSeparador() === op.value"
+                   (change)="onModoSeparadorChange(op.value)">
+            {{ op.label }}
+          </label>
+        }
+      </div>
+      @if (modoSeparador() === 'otro') {
+        <div class="separador-otro-row">
+          <input class="form-input separador-input"
+                 [value]="separadorPersonalizado()"
+                 (input)="onSeparadorPersonalizadoChange($any($event.target).value)"
+                 placeholder="ej: | o :: o ->">
+          <span class="separador-hint">Puede ser uno o varios caracteres.</span>
+        </div>
+      }
+
+      <!-- 3. Filtro -->
+      <h3 class="wizard-section-title" style="margin-top: 20px;">3. Filtro de líneas <span class="text-muted" style="font-weight:400;">(opcional)</span></h3>
+      <div class="filtro-where-box">
+        <textarea class="form-input filtro-textarea"
+                  rows="3"
+                  [value]="filtroWhere()"
+                  (input)="onFiltroChange($any($event.target).value)"
+                  placeholder="Ej: WildMatch(@3, '*/S<ATP>*') OR WildMatch(@3, '*/C<ATP>*')"></textarea>
+        @if (filtroError()) {
+          <span class="form-error">{{ filtroError() }}</span>
+        }
+        @if (!filtroError() && filtroWhere().trim()) {
+          <div class="filtro-ok-row">
+            <span class="filtro-ok">Filtro activo.</span>
+            <label class="filtro-ocultar-chk">
+              <input type="checkbox"
+                     [checked]="ocultarExcluidas()"
+                     (change)="ocultarExcluidas.set($any($event.target).checked)">
+              Ocultar filas excluidas
+            </label>
+          </div>
+        }
+        <span class="form-hint">
+          Usa <code>WildMatch(@N, 'patrón')</code> con comodines <code>*</code> (varios caracteres) y <code>?</code> (uno).
+          Combina con <code>AND</code>, <code>OR</code>, <code>NOT</code>.
+        </span>
+      </div>
+
+      <!-- 4. Tabla de identificación -->
+      <h3 class="wizard-section-title" style="margin-top: 20px;">
+        4. Identifica el tipo de mensaje
+        <span class="text-muted" style="font-weight:400; font-size:12px;">
+          — Haz clic en la línea que quieres usar como plantilla
+        </span>
+      </h3>
+
+      <!-- Toolbar: unión / columnas descartadas -->
+      <div class="ftcol-toolbar">
+        @if (columnasSeleccionadasUnir().size > 0) {
+          <span class="ftcol-toolbar-info union-sel-count">
+            {{ columnasSeleccionadasUnir().size }} {{ columnasSeleccionadasUnir().size === 1 ? 'campo seleccionado' : 'campos seleccionados' }}
+          </span>
+          @if (columnasSeleccionadasUnir().size >= 2) {
+            <button class="btn btn-sm btn-primary" type="button" (click)="unirSeleccionadas()">
+              ↔ Unir campos
+            </button>
+          } @else {
+            <span class="text-muted" style="font-size:12px;">Selecciona al menos un campo más</span>
+          }
+          <button class="btn-link" type="button" (click)="cancelarSeleccionUnion()">Cancelar</button>
+        } @else {
+          @if (columnasExcluidas().size > 0) {
+            <span class="ftcol-toolbar-info">
+              {{ columnasExcluidas().size }} {{ columnasExcluidas().size === 1 ? 'campo descartado' : 'campos descartados' }}
+            </span>
+            <label class="filtro-ocultar-chk">
+              <input type="checkbox"
+                     [checked]="ocultarColumnasDescartadas()"
+                     (change)="ocultarColumnasDescartadas.set($any($event.target).checked)">
+              Ocultar columnas descartadas
+            </label>
+            <button class="btn-link" type="button" (click)="restaurarColumnas()">Restaurar todas</button>
+          }
+        }
+      </div>
+
+      <div class="fichero-tabla-wrap">
+        <table class="fichero-tabla" [class.ftcol-drag-active]="draggingActive()">
+          <thead>
+            <tr>
+              <th class="ftcol-num">#</th>
+              @for (col of encabezadosVisibles(); track col.n) {
+                <th class="ftcol-hdr"
+                    draggable="true"
+                    [class.ftcol-descartada]="col.descartada"
+                    [class.ftcol-union-seleccionada]="col.grupoId === null && columnasSeleccionadasUnir().has(col.n - 1)"
+                    [class.ftcol-dragging]="dragSourceCol() === col.n"
+                    [class.ftcol-dragover]="dragOverCol() === col.n && dragSourceCol() !== col.n"
+                    (dragstart)="onColDragStart(col.n, $event)"
+                    (dragover)="onColDragOver(col.n, $event)"
+                    (drop)="onColDrop(col.n, $event)"
+                    (dragend)="onColDragEnd()">
+                  <span class="ftcol-hdr-inner">
+                    <span class="ftcol-drag-handle" title="Arrastrar para reordenar">⠿</span>
+                    @if (col.grupoId !== null && col.positions.length >= 2) {
+                      <!-- Cabecera fusionada: muestra "@n1+@n2+…" + botón separar -->
+                      <span class="ftcol-grupo-label union-color-{{ getColorGrupo(col.grupoId) }}">
+                        {{ col.positions.map(p => '@' + (p + 1)).join('+') }}
+                      </span>
+                      <span class="union-badge union-color-{{ getColorGrupo(col.grupoId) }}"
+                            (click)="deshacerUnion(col.grupoId); $event.stopPropagation()"
+                            title="Clic para separar los campos">↔</span>
+                    } @else if (col.grupoId !== null) {
+                      <!-- Miembro aislado (grupo no contiguo): badge de grupo + botón separar -->
+                      <span class="ftcol-grupo-label union-color-{{ getColorGrupo(col.grupoId) }}">
+                        {{ getEtiquetaGrupo(col.grupoId) }}
+                      </span>
+                      @if (isLiderOIndependiente(col.positions[0])) {
+                        <span class="union-badge union-color-{{ getColorGrupo(col.grupoId) }}"
+                              (click)="deshacerUnion(col.grupoId); $event.stopPropagation()"
+                              title="{{ getGrupoMiembros(col.grupoId) }}. Clic para separar.">↔</span>
+                      }
+                    } @else {
+                      <!-- Columna independiente: @N + toggle unir + descartar -->
+                      <span>@{{ col.n }}</span>
+                      @if (!col.descartada) {
+                        <button class="ftcol-union-toggle"
+                                [class.activo]="columnasSeleccionadasUnir().has(col.n - 1)"
+                                type="button"
+                                (click)="toggleSeleccionUnion(col.n - 1); $event.stopPropagation()"
+                                title="{{ columnasSeleccionadasUnir().has(col.n - 1) ? 'Quitar selección' : 'Seleccionar para unir' }}">
+                          {{ columnasSeleccionadasUnir().has(col.n - 1) ? '✓' : '○' }}
+                        </button>
+                        <button class="ftcol-excluir-btn" type="button"
+                                (click)="excluirColumna(col.n)"
+                                title="Descartar columna @{{col.n}}">×</button>
+                      } @else {
+                        <button class="ftcol-excluir-btn ftcol-restaurar-btn" type="button"
+                                (click)="restaurarColumna(col.n)"
+                                title="Restaurar columna @{{col.n}}">↺</button>
+                      }
+                    }
+                  </span>
+                </th>
+              }
+            </tr>
+
+            <!-- Fila de asignación de nombre en BD (visible tras seleccionar línea plantilla) -->
+            @if (campos().length > 0) {
+              <tr class="ftcol-nombre-row">
+                <th class="ftcol-num ftcol-nombre-num"></th>
+                @for (col of encabezadosVisibles(); track col.n) {
+                  <th class="ftcol-nombre-cell" [class.ftcol-descartada]="col.descartada">
+                    @if (!col.descartada && liderPosDe(col.positions) < campos().length) {
+                      <input class="ftcol-nombre-input"
+                             size="1"
+                             [value]="getNombreBdDeColumna(liderPosDe(col.positions))"
+                             placeholder="bd"
+                             (input)="setNombreBdPorPos(liderPosDe(col.positions), $any($event.target).value)">
+                    }
+                  </th>
+                }
+              </tr>
+            }
+          </thead>
+          <tbody>
+            @for (item of filasParaTabla().filas; track item.linea.numero) {
+              <tr [class.ft-fila-sel]="esLineaSeleccionada(item.linea)"
+                  [class.ft-fila-excluida]="!item.pasaFiltro"
+                  (click)="onClickLinea(item)"
+                  [title]="item.pasaFiltro ? 'Clic para usar esta línea como plantilla' : 'Excluida por el filtro WHERE'">
+                <td class="ftcol-num">{{ item.linea.numero }}</td>
+                @for (col of filasParaTabla().cols; track col.n) {
+                  <td class="ftcol-val"
+                      [class.ftcol-val-descartada]="col.descartada"
+                      [class.ftcol-val-union-sel]="col.grupoId === null && columnasSeleccionadasUnir().has(col.n - 1)"
+                      [class.ftcol-val-unida]="col.grupoId !== null">
+                    {{ getTokensConcatenados(col.positions, item.tokens) }}
+                  </td>
+                }
+                @if (!item.pasaFiltro) {
+                  <td class="ftcol-excluida-badge">excluida</td>
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (ficheroLineas().length > 500) {
+        <div class="info-box" style="margin-top: 8px; font-size: 12px;">
+          Mostrando las primeras 500 líneas del fichero.
+        </div>
+      }
+
+      <!-- 5. Configuración de campos -->
+      @if (!lineaSeleccionada()) {
+        <div class="explore-hint" style="margin-top: 20px;">
+          <div class="explore-hint-icon">👆</div>
+          <p>Haz clic en una línea del fichero para identificar sus campos y configurar el patrón.</p>
+        </div>
+      } @else {
+        <div style="margin-top: 24px;">
+          <h3 class="wizard-section-title">5. Configura los campos</h3>
+
+          <div class="linea-muestra-box">
+            <span class="linea-muestra-label">Línea {{ lineaSeleccionada()!.numero }}:</span>
+            <code class="linea-muestra-text">{{ lineaSeleccionada()!.contenido }}</code>
+          </div>
+
+          @if (filasEfectivas().length > 0) {
+            <div class="campo-table-wrap">
+              <table class="table campo-table">
+                <thead>
+                  <tr>
+                    <th class="col-pos">Campo</th>
+                    <th class="col-muestra">Muestra</th>
+                    <th class="col-nombre">Nombre BD</th>
+                    <th class="col-tipo">Tipo</th>
+                    <th class="col-formato">Formato</th>
+                    <th class="col-longitud">Long.</th>
+                    <th class="col-fusion">Unión</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (fila of filasEfectivas(); track fila.indices[0]; let fi = $index) {
+                    <tr [class.campo-ignorado]="!fila.lider.campoBd">
+                      <td class="col-pos">
+                        <span class="campo-pos-label">{{ etiquetaPosicion(fila.indices) }}</span>
+                      </td>
+                      <td class="col-muestra">
+                        <div class="muestra-tokens">
+                          @for (m of fila.muestras; track $index) {
+                            <span class="muestra-token"
+                                  [class.muestra-token-merged]="$index > 0">{{ m }}</span>
+                          }
+                        </div>
+                        @if (fila.indices.length > 1) {
+                          <span class="fusion-badge">{{ fila.indices.length }} tokens</span>
+                        }
+                      </td>
+                      <td class="col-nombre">
+                        @if (fila.lider.campoBd) {
+                          <code class="campo-bd-asignado">{{ fila.lider.campoBd }}</code>
+                        } @else {
+                          <span class="campo-bd-vacio">sin asignar</span>
+                        }
+                      </td>
+                      <td class="col-tipo">
+                        @if (fila.lider.campoBd) {
+                          <select class="form-select form-select-campo"
+                                  [value]="fila.lider.tipo"
+                                  (change)="setCampo(fi, 'tipo', $any($event.target).value)">
+                            @for (t of tiposDato; track t) {
+                              <option [value]="t">{{ t }}</option>
+                            }
+                          </select>
+                        } @else {
+                          <span class="text-muted">—</span>
+                        }
+                      </td>
+                      <td class="col-formato">
+                        @if (fila.lider.campoBd && mostrarFormato(fila.lider.tipo)) {
+                          <input class="form-input form-input-campo"
+                                 [value]="fila.lider.formato"
+                                 [placeholder]="formatoPlaceholder(fila.lider.tipo)"
+                                 (input)="setCampo(fi, 'formato', $any($event.target).value)">
+                        } @else {
+                          <span class="text-muted">—</span>
+                        }
+                      </td>
+                      <td class="col-longitud">
+                        @if (fila.lider.campoBd && fila.lider.tipo === 'varchar') {
+                          <input type="number" class="form-input form-input-sm"
+                                 [value]="fila.lider.longitud ?? 100"
+                                 min="1" max="4000"
+                                 (change)="setCampo(fi, 'longitud', +$any($event.target).value)">
+                        } @else {
+                          <span class="text-muted">—</span>
+                        }
+                      </td>
+                      <td class="col-fusion">
+                        @if (fila.indices.length > 1) {
+                          <button class="btn btn-sm btn-outline fusion-sep-btn"
+                                  type="button"
+                                  title="Separar campos unidos"
+                                  (click)="deshacerUnionFila(fi)">✕</button>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+
+            <div class="info-box" style="margin-top: 12px; font-size: 12px;">
+              💡 Asigna el <strong>nombre en BD</strong> directamente en la cabecera de la tabla superior.
+              Para <strong>unir campos</strong> usa <strong>○</strong> para seleccionarlos y pulsa <strong>↔ Unir campos</strong> — también columnas no contiguas.
+              Para separar, pulsa <strong>✕</strong> en esta tabla o el badge <strong>↔</strong> en la cabecera.
+            </div>
+          }
+        </div>
+      }
+
+    }
+
+    <div class="form-footer">
+      <button class="btn btn-outline" type="button" (click)="irPaso(1)">← Anterior</button>
+      <button class="btn btn-primary" type="button"
+              [disabled]="!puedeIrPaso3()"
+              (click)="irPaso(3)">
+        Siguiente →
+      </button>
+    </div>
+  </div>
+}
+
+<!-- ================================================================
+     PASO 3: Revisión y guardar
+     ================================================================ -->
+@if (paso() === 3) {
+  <div class="card">
+
+    @if (errorGuardar()) {
+      <div class="alert alert-error">{{ errorGuardar() }}</div>
+    }
+
+    <h3 class="wizard-section-title">Tabla destino *</h3>
+    <div class="tabla-selector">
+      <div class="tabla-modo-btns">
+        <label class="tabla-modo-option" [class.selected]="modoTabla() === 'existente'">
+          <input type="radio" name="modoTabla" value="existente"
+                 [checked]="modoTabla() === 'existente'"
+                 (change)="modoTabla.set('existente')">
+          Tabla existente
+        </label>
+        <label class="tabla-modo-option" [class.selected]="modoTabla() === 'nueva'">
+          <input type="radio" name="modoTabla" value="nueva"
+                 [checked]="modoTabla() === 'nueva'"
+                 (change)="modoTabla.set('nueva')">
+          Nueva tabla
+        </label>
+      </div>
+
+      @if (modoTabla() === 'existente') {
+        <div class="tabla-existente-list">
+          @for (t of tablaDestinos; track t) {
+            <label class="tabla-opcion" [class.selected]="form.value.tabla_destino === t">
+              <input type="radio" name="tablaDestino" [value]="t"
+                     [checked]="form.value.tabla_destino === t"
+                     (change)="form.get('tabla_destino')!.setValue(t)">
+              <code>{{ t }}</code>
+            </label>
+          }
+        </div>
+      }
+
+      @if (modoTabla() === 'nueva') {
+        <div class="form-row" style="margin-top: 12px;">
+          <label class="form-label">Nombre de la nueva tabla</label>
+          <input class="form-input" placeholder="ej: t_pedidos"
+                 [value]="tablaNueva()"
+                 (input)="tablaNueva.set($any($event.target).value)">
+          <span class="form-hint">Se creará automáticamente en la base de datos al procesar.</span>
+        </div>
+      }
+
+      @if (!tablaEfectiva()) {
+        <span class="form-error">Debes seleccionar o indicar una tabla destino.</span>
+      }
+    </div>
+
+    <h3 class="wizard-section-title" style="margin-top: 24px;">Datos del parser</h3>
+    <dl class="review-grid">
+      <dt>Nombre</dt><dd>{{ form.value.nombre }}</dd>
+      <dt>Descripción</dt><dd>{{ form.value.descripcion || '—' }}</dd>
+      <dt>Tabla destino</dt><dd><code>{{ tablaEfectiva() || '—' }}</code></dd>
+    </dl>
+
+    <h3 class="wizard-section-title" style="margin-top: 24px;">Fuente</h3>
+    @if (rutaDirectorio()) {
+      <div class="info-box">
+        📁 <strong>Directorio:</strong> {{ rutaDirectorio() }}<br>
+        📄 <strong>Fichero de muestra:</strong> {{ rutaFichero() }}
+      </div>
+    }
+
+    <h3 class="wizard-section-title" style="margin-top: 24px;">Línea de referencia</h3>
+    @if (lineaSeleccionada()) {
+      <div class="linea-muestra-box">
+        <span class="linea-muestra-label">Línea {{ lineaSeleccionada()!.numero }}:</span>
+        <code class="linea-muestra-text">{{ lineaSeleccionada()!.contenido }}</code>
+      </div>
+    }
+
+    <h3 class="wizard-section-title" style="margin-top: 24px;">Patrón generado</h3>
+    <div class="regex-preview">{{ regexGenerado() }}</div>
+
+    <h3 class="wizard-section-title" style="margin-top: 24px;">
+      Campos a extraer ({{ camposGenerados().length }})
+    </h3>
+    @if (camposGenerados().length > 0) {
+      <table class="table">
+        <thead>
+          <tr>
+            <th>#</th><th>Grupo regex</th><th>Columna BD</th><th>Tipo</th><th>Long.</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of camposGenerados(); track c.nombre_grupo; let i = $index) {
+            <tr>
+              <td>{{ i + 1 }}</td>
+              <td><code>{{ c.nombres_grupos_union ?? c.nombre_grupo }}</code></td>
+              <td>{{ c.campo_bd }}</td>
+              <td>{{ c.tipo_dato }}</td>
+              <td>{{ c.longitud ?? '—' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+
+    <div class="form-footer">
+      <button class="btn btn-outline" type="button" (click)="irPaso(2)">← Anterior</button>
+      <button class="btn btn-primary" type="button"
+              [disabled]="guardando() || !puedeGuardar()"
+              (click)="guardar()">
+        {{ guardando() ? 'Guardando...' : '💾 Crear parser' }}
+      </button>
+    </div>
+  </div>
+}
+
+<!-- ================================================================
+     MODAL: Explorador de ficheros
+     ================================================================ -->
+@if (mostrarExplorador()) {
+  <div class="modal-backdrop" (click)="mostrarExplorador.set(false)">
+    <div class="modal modal-explorer" (click)="$event.stopPropagation()">
+
+      <div class="modal-header">
+        <h2>🗂 Explorador de ficheros</h2>
+        <button class="btn-close" (click)="mostrarExplorador.set(false)">✕</button>
+      </div>
+
+      <div class="explorer-path-bar">
+        <input class="form-input explorer-path-input"
+               [value]="exploradorRutaManual()"
+               (input)="exploradorRutaManual.set($any($event.target).value)"
+               (keydown)="onRutaManualKeydown($event)"
+               placeholder="/ruta/al/directorio">
+        <button class="btn btn-outline btn-sm"
+                (click)="navegarExplorador(exploradorRutaManual())">Ir</button>
+      </div>
+
+      @if (explorador()?.ruta_padre) {
+        <div class="explorer-parent"
+             (click)="navegarExplorador(explorador()!.ruta_padre!)">
+          ← Subir al directorio padre
+        </div>
+      }
+
+      <div class="modal-body explorer-body">
+        @if (exploradorCargando()) {
+          <div class="loading">Cargando...</div>
+        }
+        @if (exploradorError()) {
+          <div class="alert alert-error">{{ exploradorError() }}</div>
+        }
+        @if (!exploradorCargando() && explorador()) {
+          <div class="explorer-list">
+            @if (explorador()!.entradas.length === 0) {
+              <div class="empty-state"><p>Directorio vacío</p></div>
+            }
+            @for (entrada of explorador()!.entradas; track entrada.ruta) {
+              <div class="explorer-entry"
+                   [class.is-dir]="entrada.es_directorio"
+                   [class.is-file]="!entrada.es_directorio"
+                   [class.selected]="esFicheroSeleccionado(entrada.ruta)"
+                   (click)="seleccionarEntrada(entrada)"
+                   (dblclick)="!entrada.es_directorio && confirmarSeleccion()">
+                <span class="explorer-icon">{{ entrada.es_directorio ? '📁' : '📄' }}</span>
+                <span class="explorer-nombre">{{ entrada.nombre }}</span>
+                @if (!entrada.es_directorio && entrada.extension) {
+                  <span class="explorer-ext">{{ entrada.extension }}</span>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="explorer-footer">
+        <div class="explorer-selected-path">
+          @if (exploradorSeleccionado()) {
+            <span class="file-path-icon">📄</span>
+            <span class="explorer-sel-text" title="{{ exploradorSeleccionado() }}">
+              {{ exploradorSeleccionado() }}
+            </span>
+          } @else {
+            <span class="text-muted">Selecciona un fichero</span>
+          }
+        </div>
+        <div class="explorer-footer-btns">
+          <button class="btn btn-outline" (click)="mostrarExplorador.set(false)">Cancelar</button>
+          <button class="btn btn-primary"
+                  [disabled]="!exploradorSeleccionado()"
+                  (click)="confirmarSeleccion()">
+            Abrir
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+}

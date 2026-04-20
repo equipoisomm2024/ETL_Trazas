@@ -10,7 +10,7 @@ export const routes: Routes = [
   {
     path: 'parsers/nuevo',
     loadComponent: () =>
-      import('./parsers/parser-form/parser-form.component').then(m => m.ParserFormComponent),
+      import('./parsers/parser-wizard/parser-wizard.component').then(m => m.ParserWizardComponent),
   },
   {
     path: 'parsers/:id/editar',

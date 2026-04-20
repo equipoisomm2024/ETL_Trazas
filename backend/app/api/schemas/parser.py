@@ -43,6 +43,7 @@ class PatronExtraccionSalida(BaseModel):
 class CampoExtraccionCrear(BaseModel):
     """Datos necesarios para crear un campo de extracción."""
     nombre_grupo: str
+    nombres_grupos_union: str | None = None
     campo_bd: str
     tipo_dato: TipoDato = "text"
     longitud: int | None = None
@@ -62,6 +63,7 @@ class CampoExtraccionCrear(BaseModel):
 class CampoExtraccionActualizar(BaseModel):
     """Campos opcionales para actualizar un campo de extracción."""
     nombre_grupo: str | None = None
+    nombres_grupos_union: str | None = None
     campo_bd: str | None = None
     tipo_dato: TipoDato | None = None
     longitud: int | None = None
@@ -75,6 +77,7 @@ class CampoExtraccionSalida(BaseModel):
     id: int
     id_parser: int
     nombre_grupo: str
+    nombres_grupos_union: str | None
     campo_bd: str
     tipo_dato: str
     longitud: int | None
@@ -122,6 +125,8 @@ class ConfiguracionParserCrear(BaseModel):
     descripcion: str | None = None
     tabla_destino: str
     activo: bool = True
+    separador_campos: str | None = " "
+    filtro_where: str | None = None
     patrones: list[PatronExtraccionCrear] = []
     campos: list[CampoExtraccionCrear] = []
     fuentes: list[FuenteFicheroCrear] = []
@@ -133,6 +138,8 @@ class ConfiguracionParserActualizar(BaseModel):
     descripcion: str | None = None
     tabla_destino: str | None = None
     activo: bool | None = None
+    separador_campos: str | None = None
+    filtro_where: str | None = None
 
 
 class ConfiguracionParserReemplazar(ConfiguracionParserCrear):
@@ -146,6 +153,8 @@ class ConfiguracionParserSalida(BaseModel):
     descripcion: str | None
     tabla_destino: str
     activo: bool
+    separador_campos: str | None
+    filtro_where: str | None
     fecha_creacion: datetime
     fecha_modificacion: datetime
     patrones: list[PatronExtraccionSalida] = []

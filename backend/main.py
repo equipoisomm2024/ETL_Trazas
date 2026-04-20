@@ -6,7 +6,7 @@ from fastapi import FastAPI
 
 from app.core.config import settings
 from app.core.logging import configurar_logging
-from app.api.routers import parsers, ejecuciones
+from app.api.routers import parsers, ejecuciones, files
 
 
 @asynccontextmanager
@@ -25,6 +25,7 @@ app = FastAPI(
 
 app.include_router(parsers.router, prefix="/api")
 app.include_router(ejecuciones.router, prefix="/api")
+app.include_router(files.router, prefix="/api")
 
 
 @app.get("/health", tags=["sistema"])

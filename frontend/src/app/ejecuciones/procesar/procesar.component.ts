@@ -1,8 +1,9 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { EjecucionesService } from '../../core/api/ejecuciones.service';
-import { ProcesarResponse } from '../../core/models';
+import { ParsersService } from '../../core/api/parsers.service';
+import { ConfiguracionParserResumen, ProcesarResponse } from '../../core/models';
 
 type FuenteTipo = 'fichero' | 'directorio' | 'fuentes_bd';
 
@@ -12,20 +13,29 @@ type FuenteTipo = 'fichero' | 'directorio' | 'fuentes_bd';
   imports: [ReactiveFormsModule, RouterLink],
   templateUrl: './procesar.component.html',
 })
-export class ProcesarComponent {
+export class ProcesarComponent implements OnInit {
   private readonly svc = inject(EjecucionesService);
+  private readonly parsersSvc = inject(ParsersService);
   private readonly fb = inject(FormBuilder);
-  private readonly router = inject(Router);
 
   fuenteTipo = signal<FuenteTipo>('directorio');
   procesando = signal(false);
   error = signal<string | null>(null);
   resultado = signal<ProcesarResponse | null>(null);
 
+  parsers = signal<ConfiguracionParserResumen[]>([]);
+
   form = this.fb.group({
     ruta: [''],
+    id_parser: [null as number | null],
     forzar_completo: [false],
   });
+
+  ngOnInit(): void {
+    this.parsersSvc.listar(true).subscribe({
+      next: (data) => this.parsers.set(data),
+    });
+  }
 
   seleccionarFuente(tipo: FuenteTipo): void {
     this.fuenteTipo.set(tipo);
@@ -44,11 +54,15 @@ export class ProcesarComponent {
 
     const forzar = this.form.value.forzar_completo ?? false;
     const ruta = this.form.value.ruta ?? '';
+    const idParser = this.form.value.id_parser ?? null;
+
+    const base: any = { forzar_completo: forzar };
+    if (idParser) base.id_parser = +idParser;
 
     const payload =
-      this.fuenteTipo() === 'fichero'    ? { fichero: ruta, forzar_completo: forzar } :
-      this.fuenteTipo() === 'directorio' ? { directorio: ruta, forzar_completo: forzar } :
-                                           { usar_fuentes_bd: true, forzar_completo: forzar };
+      this.fuenteTipo() === 'fichero'    ? { ...base, fichero: ruta } :
+      this.fuenteTipo() === 'directorio' ? { ...base, directorio: ruta } :
+                                           { ...base, usar_fuentes_bd: true };
 
     this.procesando.set(true);
     this.error.set(null);

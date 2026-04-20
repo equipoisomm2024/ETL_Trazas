@@ -24,7 +24,7 @@ export class EjecucionesService {
     if (params.fichero) p = p.set('fichero', params.fichero);
     if (params.limit !== undefined) p = p.set('limit', params.limit);
     if (params.offset !== undefined) p = p.set('offset', params.offset);
-    return this.http.get<ListaEjecuciones>(this.base, { params: p });
+    return this.http.get<ListaEjecuciones>(`${this.base}/`, { params: p });
   }
 
   obtener(idEjecucion: string): Observable<ControlCarga> {

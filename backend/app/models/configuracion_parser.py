@@ -18,6 +18,8 @@ class ConfiguracionParser(Base):
     descripcion: Mapped[str | None] = mapped_column(Text, nullable=True)
     tabla_destino: Mapped[str] = mapped_column(String(100), nullable=False)
     activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    separador_campos: Mapped[str | None] = mapped_column(String(20), nullable=True, default=" ")
+    filtro_where: Mapped[str | None] = mapped_column(Text, nullable=True)
     fecha_creacion: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=datetime.utcnow
     )
@@ -81,6 +83,7 @@ class CampoExtraccion(Base):
         Integer, ForeignKey("t_configuracion_parser.id", ondelete="CASCADE"), nullable=False
     )
     nombre_grupo: Mapped[str] = mapped_column(String(100), nullable=False)
+    nombres_grupos_union: Mapped[str | None] = mapped_column(String(500), nullable=True)
     campo_bd: Mapped[str] = mapped_column(String(100), nullable=False)
     tipo_dato: Mapped[str] = mapped_column(String(20), nullable=False, default="text")
     longitud: Mapped[int | None] = mapped_column(Integer, nullable=True)

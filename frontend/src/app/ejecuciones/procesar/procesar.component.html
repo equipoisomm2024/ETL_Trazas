@@ -48,6 +48,19 @@
       </div>
     }
 
+    @if (fuenteTipo() !== 'fuentes_bd') {
+      <div class="form-row">
+        <label class="form-label">Parser a utilizar</label>
+        <select formControlName="id_parser" class="form-select">
+          <option [value]="null">— Auto-detectar —</option>
+          @for (p of parsers(); track p.id) {
+            <option [value]="p.id">{{ p.nombre }} ({{ p.tabla_destino }})</option>
+          }
+        </select>
+        <small class="text-muted">Si seleccionas un parser concreto se usará siempre, ignorando la auto-detección.</small>
+      </div>
+    }
+
     <div class="form-row form-row-inline">
       <label class="form-label">Forzar reprocesamiento completo</label>
       <input type="checkbox" formControlName="forzar_completo" class="form-checkbox">

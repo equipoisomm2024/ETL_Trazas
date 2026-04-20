@@ -6,6 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from ...models.control_carga import ControlCarga
+from ...models.configuracion_parser import ConfiguracionParser
+from ...parsers.configurable_parser import ConfigurableParser
 from ...services.incremental_service import IncrementalService
 from ...core.config import settings
 from ..deps import get_db
@@ -79,6 +81,17 @@ def procesar(payload: ProcesarRequest, db: Session = Depends(get_db)):
     svc = IncrementalService(db)
     resultados_raw: list[dict] = []
 
+    # Resolver parser explícito si se indicó
+    parser_explicito = None
+    if payload.id_parser is not None:
+        config = db.get(ConfiguracionParser, payload.id_parser)
+        if config is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Parser con id={payload.id_parser} no encontrado.",
+            )
+        parser_explicito = ConfigurableParser(config)
+
     if payload.fichero:
         ruta = Path(payload.fichero)
         if not ruta.is_file():
@@ -87,7 +100,8 @@ def procesar(payload: ProcesarRequest, db: Session = Depends(get_db)):
                 detail=f"No existe el fichero '{payload.fichero}'.",
             )
         try:
-            r = svc.procesar_fichero(str(ruta), forzar_completo=payload.forzar_completo)
+            r = svc.procesar_fichero(str(ruta), forzar_completo=payload.forzar_completo,
+                                     parser=parser_explicito)
             resultados_raw.append({"fichero": str(ruta), "ok": True, **r})
         except Exception as exc:
             resultados_raw.append({"fichero": str(ruta), "ok": False, "error": str(exc)})
@@ -104,6 +118,7 @@ def procesar(payload: ProcesarRequest, db: Session = Depends(get_db)):
             str(ruta_dir),
             extensiones=extensiones,
             forzar_completo=payload.forzar_completo,
+            parser=parser_explicito,
         )
 
     else:  # usar_fuentes_bd
