@@ -11,6 +11,14 @@ import {
 import { TipoDato, TIPOS_DATO } from '../../core/models';
 import { QlikFilter } from '../../core/utils/qlik-filter';
 
+export interface CampoCalculado {
+  id: number;
+  campoBd: string;
+  expresion: string;
+  tipo: TipoDato;
+  longitud: number | null;
+}
+
 export interface CampoWizard {
   pos: number;
   muestra: string;
@@ -39,7 +47,7 @@ export class ParserWizardComponent implements OnInit {
   readonly tablaDestinos = ['t_errores', 't_metricas', 't_eventos'];
 
   // ── Wizard step ──────────────────────────────────────────────────────────
-  paso = signal<1 | 2 | 3>(1);
+  paso = signal<1 | 2>(1);
 
   // ── Step 1: datos básicos ────────────────────────────────────────────────
   form: FormGroup = this.fb.group({
@@ -98,6 +106,10 @@ export class ParserWizardComponent implements OnInit {
 
   // ── Step 2: configuración de campos ──────────────────────────────────────
   campos = signal<CampoWizard[]>([]);
+
+  // ── Campos calculados ─────────────────────────────────────────────────────
+  camposCalculados = signal<CampoCalculado[]>([]);
+  private _nextCampoCalcId = 0;
 
   // ── Step 2: unión de campos ───────────────────────────────────────────────
   columnasSeleccionadasUnir = signal<Set<number>>(new Set());
@@ -215,7 +227,7 @@ export class ParserWizardComponent implements OnInit {
   });
 
   regexGenerado = computed(() => this.calcRegex(this.campos(), this.columnasExcluidas()));
-  camposGenerados = computed(() => this.calcCampos(this.campos(), this.columnasExcluidas()));
+  camposGenerados = computed(() => this.calcCampos(this.campos(), this.columnasExcluidas(), this.camposCalculados()));
 
   tablaEfectiva = computed(() =>
     this.modoTabla() === 'nueva'
@@ -223,14 +235,15 @@ export class ParserWizardComponent implements OnInit {
       : this.form.value.tabla_destino
   );
 
-  puedeIrPaso2 = computed(() => this.form.get('nombre')!.valid);
+  nombreValido = signal(false);
+
+  puedeIrPaso3 = computed(() =>
+    (this.campos().length > 0 && this.campos().some(c => c.campoBd.trim())) ||
+    this.camposCalculados().some(c => c.campoBd.trim() && c.expresion.trim())
+  );
 
   puedeGuardar = computed(() =>
     this.puedeIrPaso3() && this.tablaEfectiva().length > 0
-  );
-  puedeIrPaso3 = computed(() =>
-    this.campos().length > 0 &&
-    this.campos().some(c => c.campoBd.trim())
   );
 
   filasEfectivas = computed(() => {
@@ -262,12 +275,15 @@ export class ParserWizardComponent implements OnInit {
     return filas;
   });
 
-  ngOnInit(): void {}
+  ngOnInit(): void {
+    this.form.get('nombre')!.statusChanges.subscribe(status => {
+      this.nombreValido.set(status === 'VALID');
+    });
+  }
 
   // ── Navegación de pasos ──────────────────────────────────────────────────
-  irPaso(n: 1 | 2 | 3): void {
-    if (n === 2 && !this.puedeIrPaso2()) { this.form.markAllAsTouched(); return; }
-    if (n === 3 && !this.puedeIrPaso3()) return;
+  irPaso(n: 1 | 2): void {
+    if (n === 2 && !this.puedeIrPaso3()) return;
     this.paso.set(n);
   }
 
@@ -390,19 +406,22 @@ export class ParserWizardComponent implements OnInit {
   }
 
   private construirCamposDesdeTokens(tokens: string[]): void {
-    // Preservar grupos de unión que el usuario haya definido antes de seleccionar plantilla
-    const gruposAnteriores = new Map(this.campos().map(c => [c.pos, c.grupoUnion]));
-    this.campos.set(tokens.map((t, i) => ({
-      pos: i,
-      muestra: t,
-      incluir: false,
-      nombre: `col_${i + 1}`,
-      campoBd: '',
-      tipo: 'varchar' as TipoDato,
-      formato: '',
-      longitud: 100,
-      grupoUnion: gruposAnteriores.get(i) ?? null,
-    })));
+    // Preservar lo que el usuario haya configurado previamente (por posición)
+    const anteriores = new Map(this.campos().map(c => [c.pos, c]));
+    this.campos.set(tokens.map((t, i) => {
+      const prev = anteriores.get(i);
+      return {
+        pos: i,
+        muestra: t,
+        incluir: prev?.incluir ?? false,
+        nombre: prev?.nombre ?? `col_${i + 1}`,
+        campoBd: prev?.campoBd ?? '',
+        tipo: prev?.tipo ?? 'varchar' as TipoDato,
+        formato: prev?.formato ?? '',
+        longitud: prev?.longitud ?? 100,
+        grupoUnion: prev?.grupoUnion ?? null,
+      };
+    }));
     this.columnasSeleccionadasUnir.set(new Set());
     // Preservar el orden visual si ya fue modificado; si no, inicializar secuencial
     if (this.columnDisplayOrder().length !== tokens.length) {
@@ -546,6 +565,26 @@ export class ParserWizardComponent implements OnInit {
     });
   }
 
+  // ── Campos calculados ─────────────────────────────────────────────────────
+  agregarCampoCalculado(): void {
+    this.camposCalculados.update(cs => [
+      ...cs,
+      { id: this._nextCampoCalcId++, campoBd: '', expresion: '', tipo: 'varchar' as TipoDato, longitud: 100 },
+    ]);
+  }
+
+  setCampoCalculado(idx: number, field: keyof CampoCalculado, value: any): void {
+    this.camposCalculados.update(cs => {
+      const arr = [...cs];
+      arr[idx] = { ...arr[idx], [field]: value };
+      return arr;
+    });
+  }
+
+  eliminarCampoCalculado(idx: number): void {
+    this.camposCalculados.update(cs => cs.filter((_, i) => i !== idx));
+  }
+
   // ── Mutaciones de campos ─────────────────────────────────────────────────
   toggleIncluir(filaIdx: number): void {
     const liderIdx = this.filasEfectivas()[filaIdx].indices[0];
@@ -650,7 +689,7 @@ export class ParserWizardComponent implements OnInit {
     return `^${partes.join('\\s+')}`;
   }
 
-  private calcCampos(campos: CampoWizard[], excluidas = new Set<number>()) {
+  private calcCampos(campos: CampoWizard[], excluidas = new Set<number>(), calculados: CampoCalculado[] = []) {
     const resultado: any[] = [];
     let orden = 0;
 
@@ -708,6 +747,22 @@ export class ParserWizardComponent implements OnInit {
         });
       }
     }
+
+    // Campos calculados
+    for (const cc of calculados) {
+      if (!cc.campoBd.trim() || !cc.expresion.trim()) continue;
+      resultado.push({
+        nombre_grupo: null,
+        campo_bd: cc.campoBd.trim(),
+        tipo_dato: cc.tipo,
+        longitud: cc.tipo === 'varchar' ? (cc.longitud ?? 255) : null,
+        expresion: cc.expresion.trim(),
+        opcional: true,
+        valor_defecto: null,
+        orden: orden++,
+      });
+    }
+
     return resultado;
   }
 

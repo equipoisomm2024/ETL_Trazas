@@ -464,6 +464,46 @@ code { font-family: monospace; background: var(--color-bg); padding: 1px 5px; bo
 }
 .wizard-step-line.done { background: var(--color-ok); }
 
+.wizard-divider {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: 24px 0;
+}
+
+/* Campos calculados */
+.campo-calc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.campo-calc-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.campo-calc-nombre {
+  width: 140px;
+  flex-shrink: 0;
+}
+.campo-calc-expr {
+  flex: 1;
+  min-width: 0;
+}
+.campo-calc-igual {
+  font-weight: 600;
+  color: var(--color-muted);
+  flex-shrink: 0;
+}
+.campo-calc-del {
+  flex-shrink: 0;
+}
+.campo-calc-tipo {
+  flex: 0 0 auto;
+  width: 90px;
+}
+
 .wizard-section-title {
   font-size: 14px; font-weight: 600;
   color: var(--color-text);
