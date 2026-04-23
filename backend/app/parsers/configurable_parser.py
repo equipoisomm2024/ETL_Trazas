@@ -6,6 +6,7 @@ from datetime import date, datetime
 from typing import Optional
 
 from .base_parser import BaseParser, ParsedRecord
+from .expr_evaluator import evaluar as evaluar_expresion
 from .qlik_filter import QlikWhereEvaluator
 
 logger = logging.getLogger(__name__)
@@ -85,7 +86,7 @@ class ConfigurableParser(BaseParser):
             m = patron.match(linea)
             if not m:
                 continue
-            datos = self._mapear_campos(m.groupdict(), origen, num_linea)
+            datos = self._mapear_campos(m.groupdict(), linea, origen, num_linea)
             if datos is None:
                 continue
             return ParsedRecord(
@@ -116,7 +117,7 @@ class ConfigurableParser(BaseParser):
         return compilados
 
     def _mapear_campos(
-        self, grupos: dict[str, str | None], origen: str, num_linea: int
+        self, grupos: dict[str, str | None], linea: str, origen: str, num_linea: int
     ) -> Optional[dict]:
         """Convierte los grupos capturados a un dict listo para inserción.
 
@@ -126,9 +127,30 @@ class ConfigurableParser(BaseParser):
             "origen_fichero": origen,
             "num_linea": num_linea,
         }
+        tokens: list[str] | None = None  # Se inicializa solo si hay campos calculados
 
         for campo in self._campos:
-            # Unión no contigua: concatenar varios grupos de captura
+            expresion = getattr(campo, "expresion", None)
+
+            # ── Campo calculado ─────────────────────────────────────────
+            if expresion:
+                if tokens is None:
+                    tokens = self._split_tokens(linea)
+                try:
+                    resultado = evaluar_expresion(expresion, tokens, datos)
+                    datos[campo.campo_bd] = self._convertir(
+                        str(resultado) if resultado is not None else None,
+                        campo.tipo_dato,
+                    )
+                except (ValueError, Exception) as exc:
+                    logger.warning(
+                        "Parser '%s': error evaluando expresión '%s' en línea %d: %s",
+                        self._nombre, expresion, num_linea, exc,
+                    )
+                    datos[campo.campo_bd] = None
+                continue
+
+            # ── Campo extraído por regex ────────────────────────────────
             nombres_union = getattr(campo, "nombres_grupos_union", None)
             if nombres_union:
                 fragmentos = [
@@ -137,7 +159,7 @@ class ConfigurableParser(BaseParser):
                 ]
                 valor_raw = " ".join(f for f in fragmentos if f.strip()) or None
             else:
-                valor_raw = grupos.get(campo.nombre_grupo)
+                valor_raw = grupos.get(campo.nombre_grupo) if campo.nombre_grupo else None
 
             if valor_raw is None or valor_raw.strip() == "":
                 if campo.opcional:
@@ -155,6 +177,13 @@ class ConfigurableParser(BaseParser):
             datos[campo.campo_bd] = self._convertir(valor_raw, campo.tipo_dato)
 
         return datos
+
+    def _split_tokens(self, linea: str) -> list[str]:
+        """Divide la línea por el separador, igual que lo hace el wizard en frontend."""
+        sep = self._separador
+        if sep in (" ", "\t") or not sep.strip():
+            return linea.split()
+        return [t.strip() for t in linea.split(sep) if t.strip()]
 
     def _convertir(self, valor: str | None, tipo: str) -> object:
         """Convierte una cadena al tipo Python correspondiente al tipo_dato definido."""

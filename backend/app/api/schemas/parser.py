@@ -42,8 +42,9 @@ class PatronExtraccionSalida(BaseModel):
 
 class CampoExtraccionCrear(BaseModel):
     """Datos necesarios para crear un campo de extracción."""
-    nombre_grupo: str
+    nombre_grupo: str | None = None
     nombres_grupos_union: str | None = None
+    expresion: str | None = None
     campo_bd: str
     tipo_dato: TipoDato = "text"
     longitud: int | None = None
@@ -64,6 +65,7 @@ class CampoExtraccionActualizar(BaseModel):
     """Campos opcionales para actualizar un campo de extracción."""
     nombre_grupo: str | None = None
     nombres_grupos_union: str | None = None
+    expresion: str | None = None
     campo_bd: str | None = None
     tipo_dato: TipoDato | None = None
     longitud: int | None = None
@@ -76,8 +78,9 @@ class CampoExtraccionSalida(BaseModel):
     """Representación de un campo de extracción en respuestas API."""
     id: int
     id_parser: int
-    nombre_grupo: str
+    nombre_grupo: str | None
     nombres_grupos_union: str | None
+    expresion: str | None
     campo_bd: str
     tipo_dato: str
     longitud: int | None
