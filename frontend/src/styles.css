@@ -1048,3 +1048,22 @@ code { font-family: monospace; background: var(--color-bg); padding: 1px 5px; bo
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .explorer-footer-btns { display: flex; gap: 8px; flex-shrink: 0; }
+
+/* ============================================================
+   Tareas programadas — formulario
+   ============================================================ */
+.cron-row { display: flex; align-items: center; gap: 10px; }
+.cron-input { font-family: monospace; max-width: 220px; }
+.cron-hint { font-size: 12px; color: var(--color-muted); white-space: nowrap; }
+
+.preset-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.chip {
+  padding: 3px 10px; border-radius: 12px; font-size: 12px;
+  border: 1px solid var(--color-border); background: var(--color-surface);
+  cursor: pointer; transition: background 0.15s, border-color 0.15s;
+}
+.chip:hover { background: var(--color-bg); border-color: var(--color-primary); }
+.chip-active { background: #dbeafe; border-color: var(--color-primary); color: var(--color-primary); font-weight: 500; }
+
+.badge-info { background: #fef3c7; color: #92400e; }
+.alert-ok { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; border-radius: var(--radius); padding: 10px 14px; margin-bottom: 16px; }

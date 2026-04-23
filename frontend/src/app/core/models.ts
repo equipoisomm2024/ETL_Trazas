@@ -118,3 +118,47 @@ export interface ProcesarResponse {
   total_errores: number;
   resultados: ResultadoFichero[];
 }
+
+// ---------------------------------------------------------------------------
+// Tareas programadas (Scheduler)
+// ---------------------------------------------------------------------------
+
+export type TipoFuente = 'fuentes_bd' | 'directorio' | 'fichero';
+
+export interface TareaScheduler {
+  id: number;
+  nombre: string;
+  descripcion: string | null;
+  cron_expression: string;
+  tipo_fuente: TipoFuente;
+  ruta: string | null;
+  id_parser: number | null;
+  forzar_completo: boolean;
+  activo: boolean;
+  ultima_ejecucion: string | null;
+  proxima_ejecucion: string | null;
+  fecha_creacion: string;
+  fecha_modificacion: string;
+}
+
+export interface TareaSchedulerCrear {
+  nombre: string;
+  descripcion?: string | null;
+  cron_expression: string;
+  tipo_fuente: TipoFuente;
+  ruta?: string | null;
+  id_parser?: number | null;
+  forzar_completo: boolean;
+  activo: boolean;
+}
+
+export interface TareaSchedulerActualizar {
+  nombre?: string;
+  descripcion?: string | null;
+  cron_expression?: string;
+  tipo_fuente?: TipoFuente;
+  ruta?: string | null;
+  id_parser?: number | null;
+  forzar_completo?: boolean;
+  activo?: boolean;
+}

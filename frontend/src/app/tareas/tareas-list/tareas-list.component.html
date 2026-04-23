@@ -1,0 +1,72 @@
+<div class="page-header">
+  <h1>Tareas programadas</h1>
+  <a routerLink="/tareas/nueva" class="btn btn-primary">+ Nueva tarea</a>
+</div>
+
+@if (error()) {
+  <div class="alert alert-error">{{ error() }}</div>
+}
+@if (mensaje()) {
+  <div class="alert alert-ok">{{ mensaje() }}</div>
+}
+
+@if (cargando()) {
+  <div class="loading">Cargando...</div>
+} @else if (tareas().length === 0) {
+  <div class="empty-state">
+    <p>No hay tareas programadas.</p>
+    <a routerLink="/tareas/nueva" class="btn btn-primary">Crear la primera</a>
+  </div>
+} @else {
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Nombre</th>
+        <th>Cron</th>
+        <th>Fuente</th>
+        <th>Próxima ejecución</th>
+        <th>Última ejecución</th>
+        <th>Estado</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (t of tareas(); track t.id) {
+        <tr [class.inactivo]="!t.activo">
+          <td>
+            <a [routerLink]="['/tareas', t.id, 'editar']" class="link">{{ t.nombre }}</a>
+            @if (t.descripcion) {
+              <small class="text-muted">{{ t.descripcion }}</small>
+            }
+          </td>
+          <td><code>{{ t.cron_expression }}</code></td>
+          <td>
+            <span class="badge badge-info">{{ etiquetaTipoFuente(t.tipo_fuente) }}</span>
+            @if (t.ruta) {
+              <small class="text-muted">{{ t.ruta }}</small>
+            }
+          </td>
+          <td class="text-muted">
+            {{ t.proxima_ejecucion ? (t.proxima_ejecucion | date:'dd/MM/yyyy HH:mm') : '—' }}
+          </td>
+          <td class="text-muted">
+            {{ t.ultima_ejecucion ? (t.ultima_ejecucion | date:'dd/MM/yyyy HH:mm') : '—' }}
+          </td>
+          <td>
+            <span class="badge" [class.badge-ok]="t.activo" [class.badge-off]="!t.activo">
+              {{ t.activo ? 'Activa' : 'Inactiva' }}
+            </span>
+          </td>
+          <td class="actions">
+            <a [routerLink]="['/tareas', t.id, 'editar']" class="btn btn-sm">Editar</a>
+            <button (click)="ejecutarAhora(t)" class="btn btn-sm btn-outline" title="Ejecutar ahora">▶</button>
+            <button (click)="toggleActivo(t)" class="btn btn-sm btn-outline">
+              {{ t.activo ? 'Desactivar' : 'Activar' }}
+            </button>
+            <button (click)="eliminar(t)" class="btn btn-sm btn-danger">Eliminar</button>
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+}

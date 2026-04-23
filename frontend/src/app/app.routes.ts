@@ -27,5 +27,20 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./ejecuciones/procesar/procesar.component').then(m => m.ProcesarComponent),
   },
+  {
+    path: 'tareas',
+    loadComponent: () =>
+      import('./tareas/tareas-list/tareas-list.component').then(m => m.TareasListComponent),
+  },
+  {
+    path: 'tareas/nueva',
+    loadComponent: () =>
+      import('./tareas/tarea-form/tarea-form.component').then(m => m.TareaFormComponent),
+  },
+  {
+    path: 'tareas/:id/editar',
+    loadComponent: () =>
+      import('./tareas/tarea-form/tarea-form.component').then(m => m.TareaFormComponent),
+  },
   { path: '**', redirectTo: '/parsers' },
 ];

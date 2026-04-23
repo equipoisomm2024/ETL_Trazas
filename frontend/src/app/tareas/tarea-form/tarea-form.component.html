@@ -1,0 +1,126 @@
+<div class="page-header">
+  <h1>{{ esNueva ? 'Nueva tarea programada' : 'Editar tarea' }}</h1>
+  <a routerLink="/tareas" class="btn btn-outline">← Volver</a>
+</div>
+
+@if (error()) {
+  <div class="alert alert-error">{{ error() }}</div>
+}
+
+<div class="card">
+  <form (ngSubmit)="guardar()" #f="ngForm">
+
+    <!-- Nombre y descripción -->
+    <div class="form-row">
+      <div class="form-group" style="flex:2">
+        <label>Nombre <span class="required">*</span></label>
+        <input
+          name="nombre"
+          [(ngModel)]="form.nombre"
+          required
+          maxlength="100"
+          class="form-control"
+          placeholder="Ej: Procesamiento diario ordenes"
+        />
+      </div>
+      <div class="form-group" style="flex:3">
+        <label>Descripción</label>
+        <input
+          name="descripcion"
+          [(ngModel)]="form.descripcion"
+          maxlength="255"
+          class="form-control"
+          placeholder="Descripción opcional"
+        />
+      </div>
+    </div>
+
+    <!-- Expresión cron -->
+    <div class="form-group">
+      <label>Expresión cron <span class="required">*</span></label>
+      <div class="cron-row">
+        <input
+          name="cron_expression"
+          [(ngModel)]="form.cron_expression"
+          required
+          class="form-control cron-input"
+          placeholder="* * * * *"
+        />
+        <span class="cron-hint">min hora dom mes dow</span>
+      </div>
+      <div class="preset-chips">
+        @for (p of presets; track p.valor) {
+          <button
+            type="button"
+            class="chip"
+            [class.chip-active]="form.cron_expression === p.valor"
+            (click)="aplicarPreset(p.valor)"
+          >{{ p.etiqueta }}</button>
+        }
+      </div>
+    </div>
+
+    <!-- Tipo de fuente -->
+    <div class="form-group">
+      <label>Tipo de fuente <span class="required">*</span></label>
+      <select name="tipo_fuente" [(ngModel)]="form.tipo_fuente" class="form-control">
+        @for (t of tiposFuente; track t.valor) {
+          <option [value]="t.valor">{{ t.etiqueta }}</option>
+        }
+      </select>
+    </div>
+
+    <!-- Ruta (solo directorio o fichero) -->
+    @if (form.tipo_fuente !== 'fuentes_bd') {
+      <div class="form-group">
+        <label>
+          {{ form.tipo_fuente === 'directorio' ? 'Ruta del directorio' : 'Ruta del fichero' }}
+          <span class="required">*</span>
+        </label>
+        <input
+          name="ruta"
+          [(ngModel)]="form.ruta"
+          required
+          class="form-control"
+          placeholder="{{ form.tipo_fuente === 'directorio' ? '/var/logs/ordenes' : '/var/logs/ordenes.084' }}"
+        />
+      </div>
+    }
+
+    <!-- Parser explícito (opcional) -->
+    <div class="form-group">
+      <label>Parser explícito <small class="text-muted">(opcional — si no, se auto-detecta)</small></label>
+      <select name="id_parser" [(ngModel)]="form.id_parser" class="form-control">
+        <option [ngValue]="null">— Auto-detección —</option>
+        @for (p of parsers(); track p.id) {
+          <option [ngValue]="p.id">{{ p.nombre }}</option>
+        }
+      </select>
+    </div>
+
+    <!-- Opciones -->
+    <div class="form-row">
+      <div class="form-group">
+        <label class="checkbox-label">
+          <input type="checkbox" name="forzar_completo" [(ngModel)]="form.forzar_completo" />
+          Forzar reprocesado completo
+        </label>
+      </div>
+      <div class="form-group">
+        <label class="checkbox-label">
+          <input type="checkbox" name="activo" [(ngModel)]="form.activo" />
+          Tarea activa al guardar
+        </label>
+      </div>
+    </div>
+
+    <!-- Acciones -->
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary" [disabled]="guardando() || f.invalid">
+        {{ guardando() ? 'Guardando…' : (esNueva ? 'Crear tarea' : 'Guardar cambios') }}
+      </button>
+      <a routerLink="/tareas" class="btn btn-outline">Cancelar</a>
+    </div>
+
+  </form>
+</div>
