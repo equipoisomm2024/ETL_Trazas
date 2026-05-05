@@ -35,8 +35,21 @@
         <label class="form-label">
           {{ fuenteTipo() === 'fichero' ? 'Ruta del fichero' : 'Ruta del directorio' }} *
         </label>
-        <input formControlName="ruta" class="form-input"
-               [placeholder]="fuenteTipo() === 'fichero' ? '/var/logs/app.log' : '/var/logs/app'">
+        <div class="file-path-row">
+          <div class="file-path-display">
+            @if (form.value.ruta) {
+              <span class="file-path-icon">{{ fuenteTipo() === 'fichero' ? '📄' : '📁' }}</span>
+              <span class="file-path-text" title="{{ form.value.ruta }}">{{ form.value.ruta }}</span>
+            } @else {
+              <span class="file-path-placeholder">
+                {{ fuenteTipo() === 'fichero' ? 'Ningún fichero seleccionado' : 'Ningún directorio seleccionado' }}
+              </span>
+            }
+          </div>
+          <button class="btn btn-outline" type="button" (click)="abrirExplorador()">
+            🗂 Explorar...
+          </button>
+        </div>
         @if (form.get('ruta')?.invalid && form.get('ruta')?.touched) {
           <span class="form-error">La ruta es obligatoria.</span>
         }
@@ -131,6 +144,102 @@
 
     <div class="form-footer">
       <a routerLink="/ejecuciones" class="btn btn-outline">Ver todas las ejecuciones</a>
+    </div>
+  </div>
+}
+
+<!-- ================================================================
+     MODAL: Explorador de ficheros / directorios
+     ================================================================ -->
+@if (mostrarExplorador()) {
+  <div class="modal-backdrop" (click)="mostrarExplorador.set(false)">
+    <div class="modal modal-explorer" (click)="$event.stopPropagation()">
+
+      <div class="modal-header">
+        <h2>{{ fuenteTipo() === 'fichero' ? '📄 Seleccionar fichero' : '📁 Seleccionar directorio' }}</h2>
+        <button class="btn-close" (click)="mostrarExplorador.set(false)">✕</button>
+      </div>
+
+      <div class="explorer-path-bar">
+        <input class="form-input explorer-path-input"
+               [value]="exploradorRutaManual()"
+               (input)="exploradorRutaManual.set($any($event.target).value)"
+               (keydown)="onRutaManualKeydown($event)"
+               placeholder="/ruta/al/directorio">
+        <button class="btn btn-outline btn-sm"
+                (click)="navegarExplorador(exploradorRutaManual())">Ir</button>
+      </div>
+
+      @if (explorador()?.ruta_padre) {
+        <div class="explorer-parent"
+             (click)="navegarExplorador(explorador()!.ruta_padre!)">
+          ← Subir al directorio padre
+        </div>
+      }
+
+      <div class="modal-body explorer-body">
+        @if (exploradorCargando()) {
+          <div class="loading">Cargando...</div>
+        }
+        @if (exploradorError()) {
+          <div class="alert alert-error">{{ exploradorError() }}</div>
+        }
+        @if (!exploradorCargando() && explorador()) {
+          <div class="explorer-list">
+            @if (explorador()!.entradas.length === 0) {
+              <div class="empty-state"><p>Directorio vacío</p></div>
+            }
+            @for (entrada of explorador()!.entradas; track entrada.ruta) {
+              <div class="explorer-entry"
+                   [class.is-dir]="entrada.es_directorio"
+                   [class.is-file]="!entrada.es_directorio"
+                   [class.selected]="esFicheroSeleccionado(entrada.ruta)"
+                   [class.explorer-entry-disabled]="!entradaEsSeleccionable(entrada) && !entrada.es_directorio"
+                   (click)="seleccionarEntrada(entrada)"
+                   (dblclick)="entrada.es_directorio && navegarExplorador(entrada.ruta)">
+                <span class="explorer-icon">{{ entrada.es_directorio ? '📁' : '📄' }}</span>
+                <span class="explorer-nombre">{{ entrada.nombre }}</span>
+                @if (!entrada.es_directorio && entrada.extension) {
+                  <span class="explorer-ext">{{ entrada.extension }}</span>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="explorer-footer">
+        <div class="explorer-selected-path">
+          @if (exploradorSeleccionado()) {
+            <span class="file-path-icon">{{ fuenteTipo() === 'fichero' ? '📄' : '📁' }}</span>
+            <span class="explorer-sel-text" title="{{ exploradorSeleccionado() }}">
+              {{ exploradorSeleccionado() }}
+            </span>
+          } @else if (fuenteTipo() === 'directorio' && explorador()) {
+            <span class="text-muted">
+              Directorio actual: <code>{{ explorador()!.ruta_actual }}</code>
+            </span>
+          } @else {
+            <span class="text-muted">Selecciona {{ fuenteTipo() === 'fichero' ? 'un fichero' : 'un directorio' }}</span>
+          }
+        </div>
+        <div class="explorer-footer-btns">
+          <button class="btn btn-outline" (click)="mostrarExplorador.set(false)">Cancelar</button>
+          @if (fuenteTipo() === 'directorio') {
+            <button class="btn btn-outline"
+                    [disabled]="!explorador()"
+                    (click)="confirmarDirectorioActual()">
+              📁 Usar directorio actual
+            </button>
+          }
+          <button class="btn btn-primary"
+                  [disabled]="!exploradorSeleccionado()"
+                  (click)="confirmarSeleccion()">
+            Abrir
+          </button>
+        </div>
+      </div>
+
     </div>
   </div>
 }

@@ -9,7 +9,7 @@ from sqlalchemy.orm import sessionmaker
 from app.core.config import settings
 from app.core.logging import configurar_logging
 from app.api.routers import parsers, ejecuciones, files
-from app.api.routers import tareas
+from app.api.routers import tareas, datos
 from app.scheduler import scheduler as sched
 
 
@@ -45,6 +45,7 @@ app.include_router(parsers.router, prefix="/api")
 app.include_router(ejecuciones.router, prefix="/api")
 app.include_router(files.router, prefix="/api")
 app.include_router(tareas.router, prefix="/api")
+app.include_router(datos.router, prefix="/api")
 
 
 @app.get("/health", tags=["sistema"])

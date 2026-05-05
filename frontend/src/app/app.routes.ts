@@ -42,5 +42,10 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./tareas/tarea-form/tarea-form.component').then(m => m.TareaFormComponent),
   },
+  {
+    path: 'datos',
+    loadComponent: () =>
+      import('./datos/datos-list/datos-list.component').then(m => m.DatosListComponent),
+  },
   { path: '**', redirectTo: '/parsers' },
 ];

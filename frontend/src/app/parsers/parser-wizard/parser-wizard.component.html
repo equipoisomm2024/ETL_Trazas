@@ -471,10 +471,10 @@
       @if (modoTabla() === 'existente') {
         <div class="tabla-existente-list">
           @for (t of tablaDestinos; track t) {
-            <label class="tabla-opcion" [class.selected]="form.value.tabla_destino === t">
+            <label class="tabla-opcion" [class.selected]="tablaExistente() === t">
               <input type="radio" name="tablaDestino" [value]="t"
-                     [checked]="form.value.tabla_destino === t"
-                     (change)="form.get('tabla_destino')!.setValue(t)">
+                     [checked]="tablaExistente() === t"
+                     (change)="tablaExistente.set(t)">
               <code>{{ t }}</code>
             </label>
           }

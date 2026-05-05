@@ -59,6 +59,7 @@ export class ParserWizardComponent implements OnInit {
 
   // ── Step 3: tabla destino ────────────────────────────────────────────────
   modoTabla = signal<'existente' | 'nueva'>('existente');
+  tablaExistente = signal('');
   tablaNueva = signal('');
 
   // ── Step 2: explorador de ficheros ───────────────────────────────────────
@@ -232,7 +233,7 @@ export class ParserWizardComponent implements OnInit {
   tablaEfectiva = computed(() =>
     this.modoTabla() === 'nueva'
       ? this.tablaNueva().trim()
-      : this.form.value.tabla_destino
+      : this.tablaExistente()
   );
 
   nombreValido = signal(false);

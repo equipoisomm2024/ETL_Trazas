@@ -1,0 +1,142 @@
+<div class="page-header">
+  <h1>Datos insertados</h1>
+  <button class="btn btn-outline" (click)="recargar()" [disabled]="cargandoDatos()">
+    ↺ Recargar
+  </button>
+</div>
+
+<div class="datos-layout">
+
+  <!-- ── Panel izquierdo: selector de tablas ─────────────────────────── -->
+  <aside class="datos-sidebar">
+    <h3 class="sidebar-title">Tablas</h3>
+
+    @if (cargandoTablas()) {
+      <div class="loading">Cargando...</div>
+    }
+
+    @if (!cargandoTablas() && tablas().length === 0) {
+      <div class="empty-state">
+        <p>No hay tablas destino disponibles.</p>
+      </div>
+    }
+
+    <nav class="tabla-nav">
+      @for (t of tablas(); track t.tabla) {
+        <button class="tabla-nav-item"
+                [class.active]="tablaSeleccionada() === t.tabla"
+                (click)="seleccionarTabla(t.tabla)">
+          <span class="tabla-nav-nombre">{{ t.tabla }}</span>
+          <span class="tabla-nav-count"
+                [class.count-zero]="(t.registros ?? 0) === 0">
+            {{ t.registros ?? '?' }}
+          </span>
+        </button>
+      }
+    </nav>
+  </aside>
+
+  <!-- ── Panel derecho: datos de la tabla seleccionada ───────────────── -->
+  <section class="datos-main">
+
+    @if (!tablaSeleccionada()) {
+      <div class="empty-state" style="margin-top: 60px;">
+        <div style="font-size: 48px; margin-bottom: 12px;">🗄️</div>
+        <p>Selecciona una tabla para ver sus datos.</p>
+      </div>
+    }
+
+    @if (tablaSeleccionada()) {
+
+      <div class="datos-toolbar">
+        <h2 class="datos-tabla-nombre">
+          <code>{{ tablaSeleccionada() }}</code>
+          @if (datos()) {
+            <span class="datos-total-badge">{{ datos()!.total }} registros</span>
+          }
+        </h2>
+        <div class="datos-toolbar-right">
+          <label class="datos-limit-label">
+            Mostrar
+            <select class="form-select datos-limit-select"
+                    (change)="cambiarLimit($event)">
+              <option value="25" [selected]="limit() === 25">25</option>
+              <option value="50" [selected]="limit() === 50">50</option>
+              <option value="100" [selected]="limit() === 100">100</option>
+            </select>
+            por página
+          </label>
+        </div>
+      </div>
+
+      @if (error()) {
+        <div class="alert alert-error">{{ error() }}</div>
+      }
+
+      @if (cargandoDatos()) {
+        <div class="loading" style="margin-top: 40px;">Cargando datos...</div>
+      }
+
+      @if (!cargandoDatos() && datos()) {
+
+        @if (datos()!.filas.length === 0) {
+          <div class="empty-state" style="margin-top: 40px;">
+            <p>La tabla está vacía.</p>
+          </div>
+        } @else {
+          <div class="datos-table-wrap">
+            <table class="table datos-table">
+              <thead>
+                <tr>
+                  @for (col of datos()!.columnas; track col) {
+                    <th class="datos-th" [title]="col">{{ col }}</th>
+                  }
+                </tr>
+              </thead>
+              <tbody>
+                @for (fila of datos()!.filas; track $index) {
+                  <tr>
+                    @for (col of datos()!.columnas; track col) {
+                      <td class="datos-td"
+                          [class.datos-td-num]="esNumero(fila[col])"
+                          [title]="formatearValor(fila[col])">
+                        <span class="datos-td-val">{{ formatearValor(fila[col]) }}</span>
+                      </td>
+                    }
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Paginación -->
+          @if (datos()!.pages > 1) {
+            <div class="pagination">
+              <button class="page-btn"
+                      [disabled]="datos()!.page === 1"
+                      (click)="irPagina(datos()!.page - 1)">‹</button>
+
+              @for (p of paginasMostrar(); track $index) {
+                @if (p === '...') {
+                  <span class="page-ellipsis">…</span>
+                } @else {
+                  <button class="page-btn"
+                          [class.active]="p === datos()!.page"
+                          (click)="irPagina(p)">{{ p }}</button>
+                }
+              }
+
+              <button class="page-btn"
+                      [disabled]="datos()!.page === datos()!.pages"
+                      (click)="irPagina(datos()!.page + 1)">›</button>
+
+              <span class="page-info">
+                Página {{ datos()!.page }} de {{ datos()!.pages }}
+              </span>
+            </div>
+          }
+        }
+      }
+    }
+  </section>
+</div>
